@@ -500,6 +500,15 @@ class HTMLVisualizer:
     def _get_javascript(self, stats: Dict) -> str:
         """Generate JavaScript for charts"""
         models = list(stats.get('model_metrics', {}).keys())
+
+        # Map model names to cleaner display names
+        model_display = {
+            'phi3': 'Phi-3',
+            'llama3': 'Llama 3',
+            'gemma2': 'Gemma 2'
+        }
+        display_names = [model_display.get(m, m.upper()) for m in models]
+
         model_colors = {
             'phi3': '#FF6384',
             'llama3': '#36A2EB',
@@ -510,33 +519,54 @@ class HTMLVisualizer:
         relevancy_data = []
         accuracy_data = []
         precision_data = []
+        completeness_data = []
 
         for model in models:
             model_metrics = stats['model_metrics'].get(model, {})
-            relevancy_data.append(model_metrics.get('query_overlap', 0) * 100)
-            accuracy_data.append(model_metrics.get('factual_accuracy', 0) * 100)
-            precision_data.append(model_metrics.get('context_precision', 0) * 100)
+            relevancy_data.append(round(model_metrics.get('query_overlap', 0) * 100, 1))
+            accuracy_data.append(round(model_metrics.get('factual_accuracy', 0) * 100, 1))
+            precision_data.append(round(model_metrics.get('context_precision', 0) * 100, 1))
+            completeness_data.append(round(model_metrics.get('completeness', 0) * 100, 1))
+
+        colors = [model_colors.get(m, '#999999') for m in models]
 
         return f"""
         // Chart.js visualizations
-        const models = {json.dumps(models)};
-        const colors = models.map(m => {json.dumps(model_colors)}[m] || '#999');
+        const modelNames = {json.dumps(display_names)};
+        const colors = {json.dumps(colors)};
 
         // Relevancy Chart
         new Chart(document.getElementById('relevancyChart'), {{
             type: 'bar',
             data: {{
-                labels: models,
+                labels: modelNames,
                 datasets: [{{
                     label: 'Query Overlap (%)',
                     data: {json.dumps(relevancy_data)},
-                    backgroundColor: colors
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 2
                 }}]
             }},
             options: {{
                 responsive: true,
+                maintainAspectRatio: true,
+                plugins: {{
+                    legend: {{ display: true }},
+                    title: {{
+                        display: false
+                    }}
+                }},
                 scales: {{
-                    y: {{ beginAtZero: true, max: 100 }}
+                    y: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + '%';
+                            }}
+                        }}
+                    }}
                 }}
             }}
         }});
@@ -545,17 +575,31 @@ class HTMLVisualizer:
         new Chart(document.getElementById('accuracyChart'), {{
             type: 'bar',
             data: {{
-                labels: models,
+                labels: modelNames,
                 datasets: [{{
                     label: 'Factual Accuracy (%)',
                     data: {json.dumps(accuracy_data)},
-                    backgroundColor: colors
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 2
                 }}]
             }},
             options: {{
                 responsive: true,
+                maintainAspectRatio: true,
+                plugins: {{
+                    legend: {{ display: true }}
+                }},
                 scales: {{
-                    y: {{ beginAtZero: true, max: 100 }}
+                    y: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + '%';
+                            }}
+                        }}
+                    }}
                 }}
             }}
         }});
@@ -564,17 +608,31 @@ class HTMLVisualizer:
         new Chart(document.getElementById('precisionChart'), {{
             type: 'bar',
             data: {{
-                labels: models,
+                labels: modelNames,
                 datasets: [{{
                     label: 'Context Precision (%)',
                     data: {json.dumps(precision_data)},
-                    backgroundColor: colors
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 2
                 }}]
             }},
             options: {{
                 responsive: true,
+                maintainAspectRatio: true,
+                plugins: {{
+                    legend: {{ display: true }}
+                }},
                 scales: {{
-                    y: {{ beginAtZero: true, max: 100 }}
+                    y: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{
+                            callback: function(value) {{
+                                return value + '%';
+                            }}
+                        }}
+                    }}
                 }}
             }}
         }});
@@ -583,25 +641,83 @@ class HTMLVisualizer:
         new Chart(document.getElementById('overallChart'), {{
             type: 'radar',
             data: {{
-                labels: ['Relevancy', 'Accuracy', 'Precision'],
-                datasets: models.map((model, idx) => ({{
-                    label: model.toUpperCase(),
-                    data: [
-                        {json.dumps(relevancy_data)}[idx],
-                        {json.dumps(accuracy_data)}[idx],
-                        {json.dumps(precision_data)}[idx]
-                    ],
-                    borderColor: colors[idx],
-                    backgroundColor: colors[idx] + '33'
-                }}))
+                labels: ['Relevancy', 'Accuracy', 'Precision', 'Completeness'],
+                datasets: [
+                    {{
+                        label: modelNames[0],
+                        data: [
+                            {json.dumps(relevancy_data)}[0] || 0,
+                            {json.dumps(accuracy_data)}[0] || 0,
+                            {json.dumps(precision_data)}[0] || 0,
+                            {json.dumps(completeness_data)}[0] || 0
+                        ],
+                        borderColor: colors[0],
+                        backgroundColor: colors[0] + '33',
+                        pointBackgroundColor: colors[0],
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colors[0]
+                    }},
+                    {{
+                        label: modelNames[1] || 'Model 2',
+                        data: [
+                            {json.dumps(relevancy_data)}[1] || 0,
+                            {json.dumps(accuracy_data)}[1] || 0,
+                            {json.dumps(precision_data)}[1] || 0,
+                            {json.dumps(completeness_data)}[1] || 0
+                        ],
+                        borderColor: colors[1] || '#999',
+                        backgroundColor: (colors[1] || '#999') + '33',
+                        pointBackgroundColor: colors[1] || '#999',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colors[1] || '#999'
+                    }},
+                    {{
+                        label: modelNames[2] || 'Model 3',
+                        data: [
+                            {json.dumps(relevancy_data)}[2] || 0,
+                            {json.dumps(accuracy_data)}[2] || 0,
+                            {json.dumps(precision_data)}[2] || 0,
+                            {json.dumps(completeness_data)}[2] || 0
+                        ],
+                        borderColor: colors[2] || '#999',
+                        backgroundColor: (colors[2] || '#999') + '33',
+                        pointBackgroundColor: colors[2] || '#999',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colors[2] || '#999'
+                    }}
+                ]
             }},
             options: {{
                 responsive: true,
+                maintainAspectRatio: true,
+                plugins: {{
+                    legend: {{
+                        display: true,
+                        position: 'top'
+                    }}
+                }},
                 scales: {{
-                    r: {{ beginAtZero: true, max: 100 }}
+                    r: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{
+                            stepSize: 20,
+                            callback: function(value) {{
+                                return value + '%';
+                            }}
+                        }}
+                    }}
                 }}
             }}
         }});
+
+        console.log('Charts initialized successfully');
+        console.log('Relevancy data:', {json.dumps(relevancy_data)});
+        console.log('Accuracy data:', {json.dumps(accuracy_data)});
+        console.log('Precision data:', {json.dumps(precision_data)});
         """
 
     def _calculate_summary_stats(self, results: List[Dict]) -> Dict:
