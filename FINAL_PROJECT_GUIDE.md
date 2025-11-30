@@ -70,7 +70,7 @@ ollama list
 pip install -r requirements.txt
 ```
 
-### Step 4: Run Complete Evaluation
+### Step 4A: Run Complete Evaluation (Command Line)
 ```bash
 python run_complete_evaluation.py
 ```
@@ -85,6 +85,20 @@ This will:
 7. ✅ Save JSON results
 
 **Output**: `outputs/dashboard_YYYYMMDD_HHMMSS.html`
+
+### Step 4B: Run Interactive Web Interface (Recommended)
+```bash
+streamlit run streamlit_app.py
+```
+
+This launches an interactive web application where you can:
+1. 📊 **Upload CSV**: Upload your own product dataset or use existing
+2. ❓ **Upload Questions**: Upload questions (JSON/TXT) or use predefined 15 questions
+3. 🚀 **Run Analysis**: Execute evaluation with real-time progress tracking
+4. 📈 **View Results**: Interactive Plotly charts and detailed metrics
+5. 💾 **Export**: Download JSON results or CSV summary
+
+**Access**: Open browser to `http://localhost:8501`
 
 ---
 
@@ -123,6 +137,61 @@ This will:
 - **What**: Presence of concrete details
 - **How**: Checks for numbers, prices, percentages, ratings
 - **Range**: 0.0 to 1.0
+
+---
+
+## 🌟 Interactive Streamlit Web Application
+
+The project includes a complete web-based interface (`streamlit_app.py`) for easy interaction without command line usage.
+
+### Features
+1. **🏠 Home Page**
+   - System status check (Ollama, models, data)
+   - Quick overview of capabilities
+   - Configuration summary
+
+2. **📊 Data Upload Page**
+   - Upload custom CSV files or use existing Air Conditioners dataset
+   - Preview loaded data with statistics
+   - Automatic validation and preprocessing
+
+3. **❓ Questions Setup Page**
+   - Upload questions from JSON or TXT file
+   - Use predefined 15 evaluation questions
+   - Manually enter custom questions
+   - Preview and edit question list
+
+4. **🚀 Run Analysis Page**
+   - Select models to compare (phi3, llama3, gemma2)
+   - Real-time progress tracking with status updates
+   - Live progress bar showing evaluation status
+   - Automatic metric calculation
+
+5. **📈 Results Page**
+   - Interactive Plotly charts:
+     - Bar chart: Model comparison across all metrics
+     - Radar chart: Overall performance visualization
+   - Detailed metrics table for each model
+   - Question-by-question breakdown
+   - Export options:
+     - Download JSON results
+     - Download CSV summary
+     - View raw data
+
+### How to Use
+```bash
+# Launch the web interface
+streamlit run streamlit_app.py
+
+# Open browser to http://localhost:8501
+```
+
+**Workflow**:
+1. Navigate through pages using sidebar
+2. Upload CSV (or use existing data/Air Conditioners.csv)
+3. Upload questions (or use predefined ones)
+4. Run analysis and watch progress
+5. View interactive charts and export results
 
 ---
 
@@ -168,7 +237,8 @@ rag/
 ├── SETUP_GUIDE.md                  # Detailed setup instructions
 ├── README_OLLAMA.md                # Project overview
 │
-├── run_complete_evaluation.py      # 🎯 MAIN SCRIPT - Run this!
+├── run_complete_evaluation.py      # 🎯 MAIN SCRIPT - Command line evaluation
+├── streamlit_app.py                # 🌟 INTERACTIVE WEB UI - Upload CSV & Questions
 ├── main_ollama.py                  # CLI tool for queries
 ├── quick_start.py                  # System verification
 │
@@ -194,7 +264,8 @@ rag/
 ```
 
 ### Files to Keep
-- ✅ `run_complete_evaluation.py` - Main evaluation script
+- ✅ `run_complete_evaluation.py` - Main evaluation script (command line)
+- ✅ `streamlit_app.py` - Interactive web interface (recommended)
 - ✅ `main_ollama.py` - CLI tool
 - ✅ `quick_start.py` - System check
 - ✅ All files in `src/` directory
