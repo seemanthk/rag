@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional
 import logging
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,6 +26,38 @@ class AmazonProductDataLoader:
         self.csv_path = csv_path
         self.df = None
         self.documents = []
+
+    @staticmethod
+    def _parse_price(price_str) -> float:
+        """
+        Parse price string with currency symbols and commas
+
+        Args:
+            price_str: Price string (e.g., '₹58,990', '$1,299.99', '1299')
+
+        Returns:
+            Float price value, or 0.0 if cannot parse
+        """
+        if pd.isna(price_str):
+            return 0.0
+
+        # Convert to string
+        price_str = str(price_str).strip()
+
+        if not price_str:
+            return 0.0
+
+        try:
+            # Remove currency symbols and commas
+            # Keep only digits and decimal point
+            cleaned = re.sub(r'[^\d.]', '', price_str)
+
+            if cleaned:
+                return float(cleaned)
+            else:
+                return 0.0
+        except (ValueError, TypeError):
+            return 0.0
 
     def load_data(self) -> pd.DataFrame:
         """Load CSV data"""
@@ -91,13 +124,16 @@ class AmazonProductDataLoader:
             }
 
             # Add additional metadata fields if available
-            if 'category' in row:
-                metadata['category'] = str(row['category'])
-            if 'rating' in row:
-                metadata['rating'] = float(row['rating']) if pd.notna(row['rating']) else 0.0
-            if 'price' in row or 'actual_price' in row:
-                price_col = 'price' if 'price' in row else 'actual_price'
-                metadata['price'] = float(row[price_col]) if pd.notna(row[price_col]) else 0.0
+            if 'category' in row or 'main_category' in row:
+                cat_col = 'category' if 'category' in row else 'main_category'
+                metadata['category'] = str(row[cat_col])
+            if 'rating' in row or 'ratings' in row:
+                rating_col = 'rating' if 'rating' in row else 'ratings'
+                metadata['rating'] = self._parse_price(row[rating_col])
+            if 'price' in row or 'actual_price' in row or 'discount_price' in row:
+                # Try multiple price columns
+                price_col = 'price' if 'price' in row else ('actual_price' if 'actual_price' in row else 'discount_price')
+                metadata['price'] = self._parse_price(row[price_col])
 
             document = {
                 'text': doc_text,
@@ -126,8 +162,8 @@ class AmazonProductDataLoader:
         # Define common column mappings (different datasets may use different names)
         column_mappings = {
             'name': ['product_name', 'name', 'title', 'product_title'],
-            'category': ['category', 'main_category', 'category_name'],
-            'price': ['price', 'actual_price', 'discounted_price'],
+            'category': ['category', 'main_category', 'sub_category', 'category_name'],
+            'price': ['price', 'actual_price', 'discount_price', 'discounted_price'],
             'rating': ['rating', 'ratings', 'average_rating'],
             'reviews': ['review_content', 'reviews', 'review_text'],
             'description': ['about_product', 'description', 'product_description'],
@@ -148,13 +184,17 @@ class AmazonProductDataLoader:
         # Price
         for col in column_mappings['price']:
             if col in row and pd.notna(row[col]):
-                text_parts.append(f"Price: ${row[col]}")
+                price_val = self._parse_price(row[col])
+                if price_val > 0:
+                    text_parts.append(f"Price: ₹{price_val:.2f}")
                 break
 
         # Rating
         for col in column_mappings['rating']:
             if col in row and pd.notna(row[col]):
-                text_parts.append(f"Rating: {row[col]} stars")
+                rating_val = self._parse_price(row[col])
+                if rating_val > 0:
+                    text_parts.append(f"Rating: {rating_val} stars")
                 break
 
         # Description
