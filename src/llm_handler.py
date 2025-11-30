@@ -156,21 +156,12 @@ class LLMHandler:
                 gen_kwargs.pop("use_cache", None)
                 outputs = self.pipeline(prompt, **gen_kwargs)
 
-            # Fallback 2: CUDA error - try greedy decoding
-            elif "CUDA" in error_msg or "assert" in error_msg.lower():
-                logger.warning(f"CUDA error detected, switching to greedy decoding: {e}")
-                # Clear CUDA cache
-                import torch
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-
-                # Use greedy decoding (no sampling)
-                gen_kwargs_greedy = {
-                    "max_new_tokens": gen_kwargs["max_new_tokens"],
-                    "do_sample": False,  # Greedy decoding
-                    "pad_token_id": self.tokenizer.eos_token_id,
-                }
-                outputs = self.pipeline(prompt, **gen_kwargs_greedy)
+            # Fallback 2: CUDA error - skip this model
+            elif "CUDA" in error_msg or "assert" in error_msg.lower() or "Accelerator" in error_msg:
+                logger.error(f"CUDA error detected for {self.model_name}. Skipping this model.")
+                logger.error(f"Error: {error_msg[:200]}")
+                # Return a placeholder response
+                return f"[ERROR: CUDA issue with {self.model_name}. Model skipped due to GPU compatibility issues. Try running with CPU or different model.]"
             else:
                 raise
 
