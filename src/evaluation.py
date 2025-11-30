@@ -3,6 +3,7 @@ Evaluation module for comparing LLM outputs in RAG system
 """
 
 import numpy as np
+from typing import List, Dict, Any, Optional
 from typing import Optional, Dict, Any
 from typing import List, Dict, Any
 import logging
