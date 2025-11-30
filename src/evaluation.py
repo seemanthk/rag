@@ -21,7 +21,8 @@ class RAGEvaluator:
         """Initialize evaluator"""
         self.metrics = {}
 
-    def evaluate_answer(self, answer: str, context: str, query: str) -> Dict[str, float]:
+    def evaluate_answer(self, answer: str, context: str, query: str,
+                       retrieved_docs: Optional[List[Dict]] = None) -> Dict[str, float]:
         """
         Evaluate a single answer
 
@@ -29,6 +30,7 @@ class RAGEvaluator:
             answer: Generated answer
             context: Retrieved context
             query: Original query
+            retrieved_docs: Optional list of retrieved documents for factual checking
 
         Returns:
             Dictionary of metric scores
@@ -45,11 +47,26 @@ class RAGEvaluator:
         # Faithfulness (context grounding)
         metrics['context_overlap'] = self._calculate_context_overlap(answer, context)
 
+        # Context precision (quality of retrieved documents)
+        if retrieved_docs:
+            metrics['context_precision'] = self._calculate_context_precision(retrieved_docs)
+        else:
+            metrics['context_precision'] = 0.0
+
         # Readability
         metrics['avg_sentence_length'] = self._calculate_avg_sentence_length(answer)
 
         # Specificity (presence of numbers, product names, etc.)
         metrics['specificity_score'] = self._calculate_specificity(answer)
+
+        # Factual accuracy (check prices and ratings mentioned)
+        if retrieved_docs:
+            metrics['factual_accuracy'] = self._calculate_factual_accuracy(answer, retrieved_docs)
+        else:
+            metrics['factual_accuracy'] = 0.0
+
+        # Answer completeness (does it answer the question type)
+        metrics['completeness'] = self._calculate_completeness(answer, query)
 
         return metrics
 
@@ -225,6 +242,128 @@ class RAGEvaluator:
         # Remove punctuation and split
         text = re.sub(r'[^\w\s]', ' ', text)
         return text.split()
+
+    def _calculate_context_precision(self, retrieved_docs: List[Dict]) -> float:
+        """
+        Calculate precision of retrieved context based on relevance scores
+        Higher average scores = better precision
+        """
+        if not retrieved_docs:
+            return 0.0
+
+        scores = [doc.get('score', 0.0) for doc in retrieved_docs]
+        return np.mean(scores) if scores else 0.0
+
+    def _calculate_factual_accuracy(self, answer: str, retrieved_docs: List[Dict]) -> float:
+        """
+        Calculate factual accuracy by checking if prices and ratings in answer
+        match those in retrieved documents
+        """
+        score = 0.0
+        total_checks = 0
+
+        # Extract prices from answer (₹ format)
+        answer_prices = re.findall(r'₹\s*([0-9,]+)', answer)
+        answer_prices = [float(p.replace(',', '')) for p in answer_prices]
+
+        # Extract ratings from answer
+        answer_ratings = re.findall(r'(\d+\.?\d*)\s*(?:star|rating)', answer, re.IGNORECASE)
+        answer_ratings = [float(r) for r in answer_ratings]
+
+        # Get all prices and ratings from retrieved docs
+        doc_prices = []
+        doc_ratings = []
+
+        for doc in retrieved_docs:
+            doc_text = doc.get('document', {}).get('text', '')
+
+            # Extract prices from document
+            prices = re.findall(r'₹\s*([0-9,]+\.?\d*)', doc_text)
+            doc_prices.extend([float(p.replace(',', '')) for p in prices])
+
+            # Extract ratings from document
+            ratings = re.findall(r'(\d+\.?\d*)\s*(?:star|rating)', doc_text, re.IGNORECASE)
+            doc_ratings.extend([float(r) for r in ratings if 0 <= float(r) <= 5])
+
+        # Check if mentioned prices are valid
+        if answer_prices:
+            total_checks += len(answer_prices)
+            for price in answer_prices:
+                # Check if price is within reasonable range of any doc price
+                if any(abs(price - dp) / max(price, dp) < 0.1 for dp in doc_prices if dp > 0):
+                    score += 1
+
+        # Check if mentioned ratings are valid
+        if answer_ratings:
+            total_checks += len(answer_ratings)
+            for rating in answer_ratings:
+                # Check if rating matches any doc rating (within 0.2)
+                if any(abs(rating - dr) < 0.2 for dr in doc_ratings):
+                    score += 1
+
+        # If no factual claims, give neutral score
+        if total_checks == 0:
+            return 0.5
+
+        return score / total_checks
+
+    def _calculate_completeness(self, answer: str, query: str) -> float:
+        """
+        Calculate how complete the answer is based on query type
+        """
+        score = 0.0
+        answer_lower = answer.lower()
+        query_lower = query.lower()
+
+        # Check if answer addresses comparison questions
+        if 'compare' in query_lower or 'vs' in query_lower or 'versus' in query_lower:
+            # Should mention both items and differences
+            if ('difference' in answer_lower or 'while' in answer_lower or
+                'whereas' in answer_lower or 'but' in answer_lower):
+                score += 0.5
+            # Should have specifics for both
+            numbers_count = len(re.findall(r'\d+', answer))
+            if numbers_count >= 4:  # At least 2 specs per item
+                score += 0.5
+
+        # Check if answer addresses value/best questions
+        elif any(word in query_lower for word in ['best', 'value', 'recommend']):
+            # Should have recommendations
+            if any(word in answer_lower for word in ['recommend', 'suggest', 'best', 'top']):
+                score += 0.3
+            # Should have reasoning
+            if any(word in answer_lower for word in ['because', 'due to', 'since', 'offers', 'features']):
+                score += 0.4
+            # Should have specifics
+            if re.search(r'₹\s*\d+', answer):
+                score += 0.3
+
+        # Check if answer addresses price range questions
+        elif 'price' in query_lower or '₹' in query:
+            # Should mention prices
+            if re.search(r'₹\s*\d+', answer):
+                score += 0.5
+            # Should have price-related terms
+            if any(word in answer_lower for word in ['range', 'between', 'from', 'to', 'budget']):
+                score += 0.5
+
+        # Check if answer addresses rating questions
+        elif 'rating' in query_lower or 'rated' in query_lower:
+            # Should mention ratings
+            if re.search(r'\d+\.?\d*\s*star', answer_lower):
+                score += 0.6
+            # Should have comparative terms
+            if any(word in answer_lower for word in ['highest', 'best', 'top', 'excellent']):
+                score += 0.4
+
+        # Default: check if answer has substance
+        else:
+            if len(answer.split()) > 20:  # Reasonable length
+                score += 0.5
+            if re.search(r'\d+', answer):  # Has numbers/specs
+                score += 0.5
+
+        return min(score, 1.0)  # Cap at 1.0
 
     def generate_report(self, comparison: Dict, query: str) -> str:
         """
