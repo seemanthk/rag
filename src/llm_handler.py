@@ -53,20 +53,7 @@ class LLMHandler:
         """Load the model and tokenizer"""
         logger.info(f"Loading model: {self.model_name}")
         logger.info(f"Quantization: {self.quantization}")
-
-        # Configure quantization
-        quantization_config = None
-        if self.quantization == "4bit":
-            quantization_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_use_double_quant=True,
-            )
-        elif self.quantization == "8bit":
-            quantization_config = BitsAndBytesConfig(
-                load_in_8bit=True,
-            )
+        logger.info(f"Device preference: {self.device}")
 
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
@@ -74,21 +61,41 @@ class LLMHandler:
             trust_remote_code=True
         )
 
-        # Set pad token if not set
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Load model
+        # Decide quantization & device_map
+        quantization_config = None
         model_kwargs = {
             "trust_remote_code": True,
-            "device_map": self.device,
-            "attn_implementation": "eager",  # Fix for Phi-3 compatibility
         }
+
+        if self.device == "cpu":
+            # ✅ CPU path – no bitsandbytes
+            logger.info("Using CPU – disabling quantization and using float32.")
+            model_kwargs["device_map"] = {"": "cpu"}
+            model_kwargs["torch_dtype"] = torch.float32
+        else:
+            # ✅ GPU / auto path
+            model_kwargs["device_map"] = self.device  # "auto" or "cuda:0" etc.
+            model_kwargs["attn_implementation"] = "eager"
+
+            if self.quantization == "4bit":
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_use_double_quant=True,
+                )
+            elif self.quantization == "8bit":
+                quantization_config = BitsAndBytesConfig(
+                    load_in_8bit=True,
+                )
+            else:
+                model_kwargs["torch_dtype"] = torch.float16
 
         if quantization_config is not None:
             model_kwargs["quantization_config"] = quantization_config
-        else:
-            model_kwargs["torch_dtype"] = torch.float16
 
         try:
             self.model = AutoModelForCausalLM.from_pretrained(
@@ -96,8 +103,7 @@ class LLMHandler:
                 **model_kwargs
             )
         except Exception as e:
-            # Fallback without attn_implementation if it fails
-            logger.warning(f"Failed with attn_implementation, trying without: {e}")
+            logger.warning(f"Failed initial load, retrying without attn_implementation: {e}")
             model_kwargs.pop("attn_implementation", None)
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
@@ -239,12 +245,6 @@ class MultiLLMManager:
         self.current_llm = None
 
     def load_llm(self, llm_name: str):
-        """
-        Load a specific LLM
-
-        Args:
-            llm_name: Name of LLM to load
-        """
         if llm_name not in self.llm_configs:
             raise ValueError(f"Unknown LLM: {llm_name}")
 
@@ -261,6 +261,7 @@ class MultiLLMManager:
             max_new_tokens=config.get("max_new_tokens", 512),
             temperature=config.get("temperature", 0.7),
             top_p=config.get("top_p", 0.9),
+            device=config.get("device", "auto"),   # ⬅️ NEW
         )
 
         llm.load_model()
