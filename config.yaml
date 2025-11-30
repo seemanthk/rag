@@ -1,9 +1,14 @@
-# RAG System Configuration for Amazon Products
+# RAG System Configuration for Air Conditioners (Amazon Products)
+
+# Ollama configuration
+ollama:
+  base_url: "http://localhost:11434"
+  timeout: 120
 
 # Dataset configuration
 dataset:
   name: "amazon_products"
-  path: "data/Amazon-Products.csv"
+  path: "data/Air Conditioners.csv"
   cache_dir: "data/cache"
 
 # Embedding model configuration
@@ -19,31 +24,28 @@ vector_db:
   index_path: "data/vector_index"
   similarity_metric: "cosine"
 
-# LLM configurations
+# LLM configurations - Using Ollama for local models
 llms:
-  llama3:
-    model_name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-    quantization: null        # ⬅️ disable 4bit on CPU
-    max_new_tokens: 100
-    temperature: 0.7
-    top_p: 0.9
-    device: "cpu"             # ⬅️ force CPU
-
-  mistral:
-    model_name: "mistralai/Mistral-7B-Instruct-v0.3"
-    quantization: null        # ⬅️ or remove the key
-    max_new_tokens: 128
-    temperature: 0.8
-    top_p: 0.95
-    device: "cpu"
-
   phi3:
-    model_name: "microsoft/Phi-3-mini-4k-instruct"
-    quantization: null
-    max_new_tokens: 128
+    type: "ollama"
+    model_name: "phi3"
+    max_new_tokens: 512
     temperature: 0.7
     top_p: 0.9
-    device: "cpu"
+
+  llama3:
+    type: "ollama"
+    model_name: "llama3"
+    max_new_tokens: 512
+    temperature: 0.7
+    top_p: 0.9
+
+  gemma2:
+    type: "ollama"
+    model_name: "gemma2"
+    max_new_tokens: 512
+    temperature: 0.7
+    top_p: 0.9
 
 
 # RAG configuration

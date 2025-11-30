@@ -1,98 +1,121 @@
 """
-Domain-specific questions for Amazon product RAG evaluation
+Domain-specific questions for Air Conditioner product RAG evaluation
+Based on ShopSmart RAG project requirements
 """
 
-# 10+ questions covering different aspects of Amazon products
+# 15 questions covering different aspects - aligned with project requirements
 EVALUATION_QUESTIONS = [
+    # Category A: Pure Structured (SQL-focused)
     {
         "id": 1,
-        "question": "What are the top-rated electronics products with a rating above 4.5 stars?",
-        "category": "product_search",
-        "difficulty": "easy"
+        "question": "What are the top 5 rated air conditioners under ₹40,000?",
+        "category": "structured_query",
+        "difficulty": "easy",
+        "type": "price_rating_filter"
     },
     {
         "id": 2,
-        "question": "Which products in the Home & Kitchen category are priced under $50?",
-        "category": "price_filter",
-        "difficulty": "easy"
+        "question": "Show me all 1.5 ton inverter ACs with ratings above 4.0",
+        "category": "structured_query",
+        "difficulty": "easy",
+        "type": "specs_filter"
     },
     {
         "id": 3,
-        "question": "Compare the features and prices of wireless earbuds available in the dataset.",
-        "category": "comparison",
-        "difficulty": "medium"
+        "question": "Which brand has the highest average rating for air conditioners?",
+        "category": "structured_query",
+        "difficulty": "easy",
+        "type": "brand_analysis"
     },
     {
         "id": 4,
-        "question": "What are the most common complaints or negative aspects mentioned in reviews for laptop products?",
-        "category": "sentiment_analysis",
-        "difficulty": "hard"
+        "question": "Compare average prices of 3-star ACs vs 5-star ACs",
+        "category": "structured_query",
+        "difficulty": "easy",
+        "type": "price_comparison"
     },
+
+    # Category B: Value Reasoning (Hybrid)
     {
         "id": 5,
-        "question": "Recommend a budget-friendly smartphone with good camera quality based on the product descriptions.",
-        "category": "recommendation",
-        "difficulty": "medium"
+        "question": "Find the best value 1.5 ton air conditioner under ₹35,000 considering specs and ratings",
+        "category": "value_reasoning",
+        "difficulty": "medium",
+        "type": "value_optimization"
     },
     {
         "id": 6,
-        "question": "What are the key differences between gaming laptops and regular laptops in terms of specifications?",
-        "category": "comparison",
-        "difficulty": "medium"
+        "question": "Which budget ACs (₹25,000-₹35,000) offer the best bang for buck in terms of features and energy efficiency?",
+        "category": "value_reasoning",
+        "difficulty": "medium",
+        "type": "value_range"
     },
     {
         "id": 7,
-        "question": "Which fitness trackers or smartwatches have the best battery life according to product descriptions?",
-        "category": "feature_extraction",
-        "difficulty": "medium"
+        "question": "Show me products where the discount is more than 30% and have good ratings",
+        "category": "value_reasoning",
+        "difficulty": "medium",
+        "type": "discount_value"
     },
     {
         "id": 8,
-        "question": "What is the average price range for Bluetooth speakers with waterproof features?",
-        "category": "aggregation",
-        "difficulty": "medium"
+        "question": "What's the sweet spot price range for inverter ACs based on customer satisfaction?",
+        "category": "value_reasoning",
+        "difficulty": "hard",
+        "type": "price_satisfaction"
     },
     {
         "id": 9,
-        "question": "Find products with 'wireless charging' capability and list their key features.",
-        "category": "feature_search",
-        "difficulty": "easy"
+        "question": "Compare value proposition: LG AC at ₹46,000 with 4.2 rating vs Voltas at ₹32,000 with 4.0 rating",
+        "category": "value_reasoning",
+        "difficulty": "hard",
+        "type": "value_comparison"
     },
+
+    # Category C: Temporal Analysis (simulated with data available)
     {
         "id": 10,
-        "question": "What are the most popular brands for headphones based on the number of products available?",
-        "category": "brand_analysis",
-        "difficulty": "easy"
+        "question": "Which AC models have declining ratings and what are common complaints?",
+        "category": "temporal_analysis",
+        "difficulty": "hard",
+        "type": "trend_detection"
     },
     {
         "id": 11,
-        "question": "Explain the differences between various types of chargers (fast charging, wireless, USB-C) available in the dataset.",
-        "category": "educational",
-        "difficulty": "medium"
+        "question": "Find air conditioners with consistently high satisfaction based on number of reviews",
+        "category": "temporal_analysis",
+        "difficulty": "medium",
+        "type": "consistency_check"
     },
     {
         "id": 12,
-        "question": "Which products have the most detailed descriptions and what categories do they belong to?",
-        "category": "meta_analysis",
-        "difficulty": "hard"
+        "question": "Which brands maintain quality over time based on review volume and ratings?",
+        "category": "temporal_analysis",
+        "difficulty": "hard",
+        "type": "brand_consistency"
     },
+
+    # Category D: Combined (Value + Temporal)
     {
         "id": 13,
-        "question": "What are the pros and cons of buying refurbished electronics based on product information?",
-        "category": "reasoning",
-        "difficulty": "hard"
+        "question": "Find durable air conditioners (high review count with sustained ratings) with best price-to-performance ratio",
+        "category": "combined",
+        "difficulty": "hard",
+        "type": "durability_value"
     },
     {
         "id": 14,
-        "question": "Find the best value-for-money products in the Computer Accessories category.",
-        "category": "recommendation",
-        "difficulty": "medium"
+        "question": "Which budget ACs under ₹35,000 have the best value AND strong customer trust (high review count)?",
+        "category": "combined",
+        "difficulty": "hard",
+        "type": "value_trust"
     },
     {
         "id": 15,
-        "question": "What security features are mentioned in smart home device descriptions?",
-        "category": "feature_extraction",
-        "difficulty": "medium"
+        "question": "Recommend the most reliable inverter AC brands considering price, ratings, and customer engagement",
+        "category": "combined",
+        "difficulty": "hard",
+        "type": "comprehensive_recommendation"
     }
 ]
 
