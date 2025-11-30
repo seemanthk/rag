@@ -1,0 +1,76 @@
+# RAG System Configuration for Amazon Products
+
+# Dataset configuration
+dataset:
+  name: "amazon_products"
+  path: "data/Amazon-Products.csv"
+  cache_dir: "data/cache"
+
+# Embedding model configuration
+embedding:
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  dimension: 384
+  batch_size: 32
+  device: "cuda"  # or "cpu"
+
+# Vector database configuration
+vector_db:
+  type: "faiss"  # or "chromadb"
+  index_path: "data/vector_index"
+  similarity_metric: "cosine"
+
+# LLM configurations
+llms:
+  llama3:
+    model_name: "meta-llama/Llama-3.2-3B-Instruct"
+    quantization: "4bit"
+    max_new_tokens: 512
+    temperature: 0.7
+    top_p: 0.9
+
+  mistral:
+    model_name: "mistralai/Mistral-7B-Instruct-v0.3"
+    quantization: "4bit"
+    max_new_tokens: 512
+    temperature: 0.7
+    top_p: 0.9
+
+  phi3:
+    model_name: "microsoft/Phi-3-mini-4k-instruct"
+    quantization: "4bit"
+    max_new_tokens: 512
+    temperature: 0.7
+    top_p: 0.9
+
+# RAG configuration
+rag:
+  top_k: 5
+  chunk_size: 512
+  chunk_overlap: 50
+  reranking: false
+
+# Evaluation configuration
+evaluation:
+  metrics:
+    - "answer_relevancy"
+    - "faithfulness"
+    - "context_precision"
+    - "response_length"
+  output_dir: "outputs"
+
+# Generation prompts
+prompts:
+  system_prompt: |
+    You are a helpful AI assistant specialized in answering questions about Amazon products.
+    Use the provided context to answer the user's question accurately and concisely.
+    If you cannot find the answer in the context, say so clearly.
+
+  qa_template: |
+    Context information is below:
+    ---------------------
+    {context}
+    ---------------------
+
+    Given the context information and not prior knowledge, answer the query.
+    Query: {query}
+    Answer:
