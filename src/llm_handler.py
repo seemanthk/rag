@@ -144,15 +144,33 @@ class LLMHandler:
             "pad_token_id": self.tokenizer.eos_token_id,  # Explicit padding
         }
 
-        # Generate
+        # Generate with multiple fallback strategies
         try:
             outputs = self.pipeline(prompt, **gen_kwargs)
-        except AttributeError as e:
-            # Fallback: try without use_cache if it causes issues
-            if "seen_tokens" in str(e):
+        except (AttributeError, RuntimeError) as e:
+            error_msg = str(e)
+
+            # Fallback 1: Cache error
+            if "seen_tokens" in error_msg:
                 logger.warning(f"Cache error, retrying without use_cache: {e}")
                 gen_kwargs.pop("use_cache", None)
                 outputs = self.pipeline(prompt, **gen_kwargs)
+
+            # Fallback 2: CUDA error - try greedy decoding
+            elif "CUDA" in error_msg or "assert" in error_msg.lower():
+                logger.warning(f"CUDA error detected, switching to greedy decoding: {e}")
+                # Clear CUDA cache
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+                # Use greedy decoding (no sampling)
+                gen_kwargs_greedy = {
+                    "max_new_tokens": gen_kwargs["max_new_tokens"],
+                    "do_sample": False,  # Greedy decoding
+                    "pad_token_id": self.tokenizer.eos_token_id,
+                }
+                outputs = self.pipeline(prompt, **gen_kwargs_greedy)
             else:
                 raise
 
