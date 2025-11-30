@@ -133,11 +133,15 @@ class LLMHandler:
             raise ValueError("Model not loaded. Call load_model() first.")
 
         # Merge kwargs with defaults
+        temp = kwargs.get("temperature", self.temperature)
         gen_kwargs = {
             "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
-            "temperature": kwargs.get("temperature", self.temperature),
+            "temperature": max(temp, 0.1),  # Ensure temp >= 0.1 to avoid CUDA errors
             "top_p": kwargs.get("top_p", self.top_p),
             "use_cache": False,  # Disable cache to avoid compatibility issues
+            "do_sample": True,
+            "top_k": 50,  # Add top_k for better sampling
+            "pad_token_id": self.tokenizer.eos_token_id,  # Explicit padding
         }
 
         # Generate
