@@ -28,21 +28,21 @@ vector_db:
 llms:
   phi3:
     type: "ollama"
-    model_name: "phi3"
+    model_name: "phi3:mini"
     max_new_tokens: 512
     temperature: 0.7
     top_p: 0.9
 
   llama3:
     type: "ollama"
-    model_name: "llama3"
+    model_name: "llama3.2:latest"
     max_new_tokens: 512
     temperature: 0.7
     top_p: 0.9
 
   gemma2:
     type: "ollama"
-    model_name: "gemma2"
+    model_name: "gemma2:2b"
     max_new_tokens: 512
     temperature: 0.7
     top_p: 0.9
