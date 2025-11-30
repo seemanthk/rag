@@ -82,6 +82,7 @@ class LLMHandler:
         model_kwargs = {
             "trust_remote_code": True,
             "device_map": self.device,
+            "attn_implementation": "eager",  # Fix for Phi-3 compatibility
         }
 
         if quantization_config is not None:
@@ -89,10 +90,19 @@ class LLMHandler:
         else:
             model_kwargs["torch_dtype"] = torch.float16
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            **model_kwargs
-        )
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                **model_kwargs
+            )
+        except Exception as e:
+            # Fallback without attn_implementation if it fails
+            logger.warning(f"Failed with attn_implementation, trying without: {e}")
+            model_kwargs.pop("attn_implementation", None)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                **model_kwargs
+            )
 
         logger.info("Model loaded successfully")
 
@@ -127,10 +137,20 @@ class LLMHandler:
             "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
             "temperature": kwargs.get("temperature", self.temperature),
             "top_p": kwargs.get("top_p", self.top_p),
+            "use_cache": False,  # Disable cache to avoid compatibility issues
         }
 
         # Generate
-        outputs = self.pipeline(prompt, **gen_kwargs)
+        try:
+            outputs = self.pipeline(prompt, **gen_kwargs)
+        except AttributeError as e:
+            # Fallback: try without use_cache if it causes issues
+            if "seen_tokens" in str(e):
+                logger.warning(f"Cache error, retrying without use_cache: {e}")
+                gen_kwargs.pop("use_cache", None)
+                outputs = self.pipeline(prompt, **gen_kwargs)
+            else:
+                raise
 
         # Extract generated text (remove prompt)
         generated_text = outputs[0]["generated_text"]
